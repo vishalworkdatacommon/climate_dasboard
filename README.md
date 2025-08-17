@@ -1,131 +1,85 @@
 # County-Level Climate Analysis Dashboard
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://YOUR_STREAMLIT_APP_URL_HERE)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://climatedasboard-m8jnmrjrd6ltxhgnbet8x3.streamlit.app/)
 
-An interactive web application for performing detailed climate trend analysis on county-level data for the United States, starting with the Standardized Precipitation Index (SPI).
+## Overview
 
-This repository is a fully self-contained, automated system. It includes a live data pipeline that automatically fetches the latest data, processes it, and updates the application.
+This repository contains an interactive web application for performing detailed climate trend analysis on county-level data for the United States. The initial implementation focuses on the Standardized Precipitation Index (SPI).
 
-## 🚀 Live Application
+The project is architected as a fully self-contained, automated system. It integrates a data pipeline that automatically fetches, processes, and updates the application's data on a monthly schedule using GitHub Actions.
 
-You can access the live, interactive dashboard here:
-**[https://YOUR_STREAMLIT_APP_URL_HERE](https://YOUR_STREAMLIT_APP_URL_HERE)**
-*(Note: Replace this URL with your actual Streamlit Cloud URL after deployment.)*
+## Live Application
 
----
-
-## ✨ Features
-
-*   **Interactive County Selection:** Enter any 5-digit US County FIPS code to load its specific data.
-*   **Multi-Analysis Suite:** Perform a variety of time-series analyses on the selected county's data:
-    *   **Trend Analysis:** Visualize the long-term trend with a 12-month rolling average.
-    *   **Anomaly Detection:** Identify months with unusually high or low SPI values (more than 2 standard deviations from the mean).
-    *   **Seasonal Decomposition:** Break down the time series into its observed, trend, seasonal, and residual components.
-    *   **Autocorrelation:** Analyze the ACF and PACF plots to understand the data's correlation structure.
-    *   **Forecasting:** Generate a 24-month forecast using a predictive ARIMA model.
-*   **Fully Automated:** The underlying data is automatically refreshed on a monthly schedule.
+The live, interactive dashboard is deployed on Streamlit Cloud and is available at the following URL:
+**[https://climatedasboard-m8jnmrjrd6ltxhgnbet8x3.streamlit.app/](https://climatedasboard-m8jnmrjrd6ltxhgnbet8x3.streamlit.app/)**
 
 ---
 
-## ⚙️ Overall Workflow & Architecture
+## Features
 
-This project is designed as a single, self-sustaining repository that handles both the data pipeline and the user-facing application. It uses **Git LFS** to manage large data files and **GitHub Actions** for full automation.
-
-The architecture can be understood as two parts that work together within this repository:
-
-1.  **The Automated Data Factory (The Pipeline):** A background process that automatically creates the final data product.
-2.  **The Live Application (The Storefront):** The Streamlit app that users interact with.
-
-Here is a diagram of the complete, end-to-end workflow:
-
-```
-+------------------------------------------------------+
-| 1. GITHUB ACTIONS (The Robot)                        |
-| (Triggered automatically on the 1st of every month)  |
-+------------------------------------------------------+
-                         |
-                         ▼
-+------------------------------------------------------+
-| 2. RUNS PIPELINE SCRIPTS (The Factory)               |
-|    - download_script.py  (Fetches new raw data)      |
-|    - parse_precipitation_index.py (Cleans the data)  |
-|    - Converts the clean data to spi_data.parquet     |
-+------------------------------------------------------+
-                         |
-                         ▼
-+------------------------------------------------------+
-| 3. PUSHES NEW DATA (The Robot restocks the shelf)    |
-|    - Commits the new spi_data.parquet file           |
-|    - Pushes the commit to the repository via Git LFS |
-+------------------------------------------------------+
-                         |
-                         ▼
-+------------------------------------------------------+
-| 4. STREAMLIT CLOUD (The Storefront)                  |
-|    - Automatically detects the new commit            |
-|    - Redeploys the app with the fresh data file      |
-|    - Users see the latest data on their next visit   |
-+------------------------------------------------------+
-```
+*   **County-Specific Analysis:** Users can input any 5-digit US County FIPS code to load and analyze data for that specific geography.
+*   **Comprehensive Analysis Suite:** The application provides a suite of standard time-series analyses:
+    *   **Trend Analysis:** Visualization of long-term trends using a 12-month rolling average.
+    *   **Anomaly Detection:** Identification of statistical anomalies (defined as >2 standard deviations from the rolling mean).
+    *   **Seasonal Decomposition:** Decomposition of the time series into observed, trend, seasonal, and residual components.
+    *   **Autocorrelation Analysis:** Generation of ACF and PACF plots to inspect the data's correlation structure.
+    *   **Forecasting:** Predictive 24-month forecasting using an ARIMA model.
+*   **Automated Data Refresh:** The underlying dataset is automatically updated monthly via a GitHub Actions workflow.
 
 ---
 
-## 📂 Repository Structure
+## System Architecture and Workflow
 
-```
-climate_dasboard/
-├── .github/
-│   └── workflows/
-│       └── update_data.yml   # The instruction manual for the GitHub Actions robot
-├── .gitattributes            # Configures which files are handled by Git LFS
-├── .gitignore                # Tells Git which files to ignore (e.g., cache files)
-├── app.py                    # The main Streamlit application code (the "Storefront")
-├── download_script.py        # Pipeline script to download raw data
-├── parse_precipitation_index.py  # Pipeline script to clean raw data
-├── import_configs.json       # Configuration for the pipeline
-├── index/                    # Contains the raw input data for the pipeline
-├── spi_data.parquet          # The final, clean data file used by the app (managed by LFS)
-└── requirements.txt          # A list of all Python libraries required
-```
+This project is designed as a single, self-sustaining repository ("monorepo") that handles both the data pipeline and the user-facing application. It utilizes **Git LFS** to manage large data files and **GitHub Actions** for full automation.
+
+The workflow is as follows:
+
+1.  **Scheduled Trigger:** A GitHub Actions workflow is scheduled to run on the first day of every month.
+2.  **Data Pipeline Execution:** The workflow executes a series of scripts within a cloud-based runner:
+    *   `download_script.py`: Fetches the latest raw data from the source (CDC).
+    *   `parse_precipitation_index.py`: Cleans and processes the raw data into a standardized format.
+    *   The processed data is then converted into the efficient Parquet format (`spi_data.parquet`).
+3.  **Data Versioning and Update:** The workflow commits the new Parquet data file back to the repository. Git LFS handles the storage of this large file.
+4.  **Continuous Deployment:** Streamlit Cloud detects the new commit in the repository and automatically redeploys the application, making the fresh data immediately available to users.
 
 ---
 
-## 🛠️ Getting Started & Local Development
+## Local Development
 
-To run this application on your own machine, follow these steps.
+To run this application on a local machine, follow these steps.
 
 ### Prerequisites
 *   Git
 *   Git LFS (`sudo apt-get install git-lfs`)
 *   Python 3.8+ and `pip`
 
-### Installation & Setup
+### Installation
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/vishalworkdatacommon/climate_dasboard.git
     cd climate_dasboard
     ```
 
-2.  **Pull the large data files:**
-    After cloning, you need to pull the data files being tracked by Git LFS.
+2.  **Pull LFS data:**
+    Download the large data files tracked by Git LFS.
     ```bash
     git lfs pull
     ```
 
-3.  **Create and activate a virtual environment (recommended):**
+3.  **Set up a virtual environment (recommended):**
     ```bash
     python3 -m venv venv
     source venv/bin/activate
     ```
 
-4.  **Install the required libraries:**
+4.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
-### Running the Application Locally
-To launch the Streamlit web application, run the following command in your terminal:
+### Running the Application
+Launch the Streamlit application with the following command:
 ```bash
 streamlit run app.py
 ```
-This will open the application in your default web browser.
+The application will open in your default web browser.

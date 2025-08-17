@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,7 +10,7 @@ import warnings
 # --- Page Configuration ---
 st.set_page_config(
     page_title="County-Level SPI Analysis",
-    page_icon="📊",
+    page_icon="📊", # Standard chart icon is appropriate
     layout="wide",
 )
 
@@ -21,7 +20,9 @@ warnings.filterwarnings("ignore")
 # --- Data Loading Function ---
 @st.cache_data
 def load_data():
-    """Loads the Parquet data file from the local repository."""
+    """
+    Loads the Parquet data file from the local repository.
+    """
     file_path = os.path.join(os.path.dirname(__file__), 'spi_data.parquet')
     df = pd.read_parquet(file_path)
     return df
@@ -90,41 +91,42 @@ def plot_forecasting(ts):
     ax.plot(ts.index, ts, label='Historical Monthly SPI')
     ax.plot(forecast_index, forecast.predicted_mean, label='Forecast', color='red')
     ax.fill_between(forecast_index, forecast.conf_int().iloc[:, 0], forecast.conf_int().iloc[:, 1], color='pink', alpha=0.7, label='95% Confidence Interval')
-    ax.set_title('SPI Forecast (Next 24 Months)')
+    ax.set_title('SPI Forecast (24-Month Horizon)')
     ax.set_xlabel('Year')
     ax.set_ylabel('SPI Value')
     ax.legend()
     ax.grid(True, which='both', linestyle='--')
     return fig
 
-# --- Main App ---
-st.title("County-Level Climate Trend Analysis")
-st.markdown("Enter a County FIPS code to see its specific Standardized Precipitation Index (SPI) trend.")
+# --- Main Application UI ---
+st.title("County-Level Climate Analysis")
+st.markdown("This application provides time-series analysis for the Standardized Precipitation Index (SPI) for any selected US county.")
 
 # Load the full dataset once
 full_data = load_data()
 
-# --- User Input ---
-st.sidebar.header("User Input")
+# --- Sidebar Controls ---
+st.sidebar.header("Controls")
 fips_code_input = st.sidebar.text_input(
     "Enter 5-Digit County FIPS Code:",
-    "06037", # Example: Los Angeles County, CA
-    help="Examples: 06037 (Los Angeles), 17031 (Chicago), 48201 (Houston)"
+    "06037", # Default: Los Angeles County, CA
+    help="Examples: 06037 (Los Angeles), 17031 (Cook), 48201 (Harris)"
 )
 
 analysis_choice = st.sidebar.selectbox(
-    "Choose an Analysis:",
+    "Select Analysis:",
     ["Trend Analysis", "Anomaly Detection", "Seasonal Decomposition", "Autocorrelation", "Forecasting"]
 )
 
+# --- Main Panel Logic ---
 if len(fips_code_input) == 5 and fips_code_input.isdigit():
     st.header(f"{analysis_choice} for County FIPS: {fips_code_input}")
     
-    # Filter the DataFrame in memory
+    # Filter the DataFrame in memory for the selected county
     county_df = full_data[full_data['countyfips'] == fips_code_input]
     
     if county_df.empty:
-        st.warning(f"No data found for FIPS code {fips_code_input}. Please try another.")
+        st.warning(f"No data found for FIPS code {fips_code_input}. Please select another county.")
     else:
         # Prepare data for plotting
         county_df['date'] = pd.to_datetime(county_df['date'])
@@ -132,7 +134,7 @@ if len(fips_code_input) == 5 and fips_code_input.isdigit():
         county_df.set_index('date', inplace=True)
         time_series = county_df['Value'].asfreq('MS') # Ensure monthly frequency for time series models
         
-        # --- Generate and Display the Plot ---
+        # --- Generate and Display the Selected Plot ---
         plot_function = {
             "Trend Analysis": plot_trend_analysis,
             "Anomaly Detection": plot_anomaly_detection,
@@ -144,8 +146,8 @@ if len(fips_code_input) == 5 and fips_code_input.isdigit():
         fig = plot_function(time_series)
         st.pyplot(fig, use_container_width=True)
 else:
-    st.error("Please enter a valid 5-digit FIPS code in the sidebar.")
+    st.error("A valid 5-digit FIPS code is required. Please check the sidebar.")
 
 # --- Footer ---
 st.markdown("---")
-st.markdown("This application uses data stored in the repository via Git LFS.")
+st.markdown("This application utilizes data stored within the repository, managed by Git LFS.")
