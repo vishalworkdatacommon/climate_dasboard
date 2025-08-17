@@ -1,7 +1,8 @@
-# This is the final, correct GitHub Actions workflow.
-# It is fully self-contained and does not use any external services like GCS.
 
-name: Monthly Data Refresh (Self-Contained)
+# This workflow uses GitHub Releases to store the data file.
+# It is fully self-contained and does not use any external services.
+
+name: Monthly Data Refresh via GitHub Releases
 
 on:
   schedule:
@@ -9,16 +10,13 @@ on:
   workflow_dispatch: # Allows manual runs
 
 jobs:
-  update-data-file:
+  update-release-asset:
     runs-on: ubuntu-latest
 
     steps:
     # Step 1: Check out your repository's code
     - name: Checkout repository
       uses: actions/checkout@v4
-      # We need to fetch LFS files
-      with:
-        lfs: true
 
     # Step 2: Set up Python
     - name: Set up Python
@@ -32,12 +30,11 @@ jobs:
         pip install pandas pyarrow
 
     # Step 4: Run the data pipeline to create the new Parquet file
-    - name: Download raw data
-      run: python3 download_script.py --import_name=CDC_StandardizedPrecipitationIndex --config_file=import_configs.json
+    - name: Download and Parse Data
+      run: |
+        python3 download_script.py --import_name=CDC_StandardizedPrecipitationIndex --config_file=import_configs.json
+        python3 parse_precipitation_index.py CDC_StandardizedPrecipitationIndex_input.csv output/CDC_StandardizedPrecipitationIndex_output.csv
       working-directory: ./index
-
-    - name: Parse raw data
-      run: python3 parse_precipitation_index.py index/CDC_StandardizedPrecipitationIndex_input.csv index/output/CDC_StandardizedPrecipitationIndex_output.csv
 
     - name: Convert CSV to Parquet
       run: |
@@ -47,16 +44,13 @@ jobs:
         df.to_parquet('spi_data.parquet', engine='pyarrow')
       shell: python
 
-    # Step 5: Commit the new data file back to the repository
-    - name: Commit and push updated data
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add spi_data.parquet
-        # Check if there are any changes to commit
-        if git diff --staged --quiet; then
-          echo "No data changes to commit."
-        else
-          git commit -m "Data: Refresh SPI data for $(date -u +'%Y-%m-%d')"
-          git push
-        fi
+    # Step 5: Upload the new data file to the GitHub Release
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: https://uploads.github.com/repos/vishalworkdatacommon/climate_dasboard/releases/$(gh release list --limit 1 --json tagName -q '.[0].tagName' | sed 's/v//')/assets
+        asset_path: ./spi_data.parquet
+        asset_name: spi_data.parquet
+        asset_content_type: application/octet-stream
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
