@@ -1,0 +1,63 @@
+
+# This is the final, correct GitHub Actions workflow.
+# It is fully self-contained and does not use any external services like GCS.
+
+name: Monthly Data Refresh (Self-Contained)
+
+on:
+  schedule:
+    - cron: '30 5 1 * *' # Runs at 05:30 UTC on the 1st of every month
+  workflow_dispatch: # Allows manual runs
+
+jobs:
+  update-data-file:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out your repository's code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      # We need to fetch LFS files
+      with:
+        lfs: true
+
+    # Step 2: Set up Python
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    # Step 3: Install Python dependencies
+    - name: Install dependencies
+      run: |
+        pip install pandas pyarrow
+
+    # Step 4: Run the data pipeline to create the new Parquet file
+    - name: Download raw data
+      run: python3 download_script.py --import_name=CDC_StandardizedPrecipitationIndex --config_file=import_configs.json
+      working-directory: ./index
+
+    - name: Parse raw data
+      run: python3 parse_precipitation_index.py index/CDC_StandardizedPrecipitationIndex_input.csv index/output/CDC_StandardizedPrecipitationIndex_output.csv
+
+    - name: Convert CSV to Parquet
+      run: |
+        import pandas as pd
+        df = pd.read_csv('index/output/CDC_StandardizedPrecipitationIndex_output.csv')
+        df['countyfips'] = df['countyfips'].astype(str).str.zfill(5)
+        df.to_parquet('spi_data.parquet', engine='pyarrow')
+      shell: python
+
+    # Step 5: Commit the new data file back to the repository
+    - name: Commit and push updated data
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add spi_data.parquet
+        # Check if there are any changes to commit
+        if git diff --staged --quiet; then
+          echo "No data changes to commit."
+        else
+          git commit -m "Data: Refresh SPI data for $(date -u +'%Y-%m-%d')"
+          git push
+        fi
