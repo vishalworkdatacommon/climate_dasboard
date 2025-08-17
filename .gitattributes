@@ -1,0 +1,4 @@
+*.parquet filter=lfs diff=lfs merge=lfs -text
+index/**/*.csv filter=lfs diff=lfs merge=lfs -text
+index/CDC_StandardizedPrecipitationIndex_input.csv filter=lfs diff=lfs merge=lfs -text
+index/test_data/*.csv filter=lfs diff=lfs merge=lfs -text
